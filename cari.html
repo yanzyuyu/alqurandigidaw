@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pencarian Pintar - Alquran Digidaw</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+        .font-arabic { font-family: 'Amiri', serif; }
+        .font-serif { font-family: 'Lora', serif; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 font-serif min-h-screen flex flex-col">
+    <nav class="w-full bg-white border-b border-stone-200 sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 md:px-6 py-4 md:h-16 flex flex-col md:flex-row items-center justify-between gap-4">
+            <a href="index.html" class="font-bold text-lg text-stone-900 tracking-tight">Alquran Digidaw</a>
+            <div class="flex flex-wrap justify-center gap-4 md:gap-6 text-sm font-medium">
+                <a href="index.html" class="text-stone-500 hover:text-stone-900 transition-colors">Surah</a>
+                <a href="cari.html" class="text-stone-900 transition-colors">Pencarian AI</a>
+                <a href="shalat.html" class="text-stone-500 hover:text-stone-900 transition-colors">Jadwal Shalat</a>
+                <a href="doa.html" class="text-stone-500 hover:text-stone-900 transition-colors">Doa</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="w-full bg-white border-b border-stone-200 shadow-sm">
+        <div class="max-w-4xl mx-auto px-6 py-12 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-stone-900 mb-3">Pencarian Semantik</h1>
+            <p class="text-stone-500 uppercase tracking-widest text-sm">Temukan ayat berdasarkan makna dan konteks (AI)</p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 md:px-6 py-12 w-full flex-grow">
+        <form id="form-cari" class="mb-12 relative flex flex-col sm:flex-row gap-3">
+            <input type="text" id="input-cari" placeholder="Contoh: ayat tentang sabar menghadapi cobaan..." required class="w-full bg-white border border-stone-200 text-stone-900 text-lg rounded-sm px-5 py-4 focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 shadow-sm transition-all placeholder:text-stone-400">
+            <button type="submit" class="bg-stone-900 hover:bg-stone-800 text-white px-8 py-4 rounded-sm font-medium transition-all shadow-sm shrink-0">Cari</button>
+        </form>
+
+        <div id="loading" class="hidden text-stone-500 text-center animate-pulse mb-8">
+            Menganalisis makna dan mencari ayat yang relevan...
+        </div>
+
+        <div id="konten-hasil" class="space-y-6">
+        </div>
+    </main>
+
+    <script>
+        const formCari = document.getElementById('form-cari');
+        const inputCari = document.getElementById('input-cari');
+        const kontenHasil = document.getElementById('konten-hasil');
+        const loading = document.getElementById('loading');
+
+        formCari.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = inputCari.value.trim();
+            if (!query) return;
+
+            loading.classList.remove('hidden');
+            kontenHasil.innerHTML = '';
+
+            try {
+                const response = await fetch('https://equran.id/api/vector', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cari: query,
+                        batas: 10,
+                        tipe: ["ayat", "tafsir"],
+                        skorMin: 0.5
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status !== 'sukses' || !result.hasil || result.hasil.length === 0) {
+                    kontenHasil.innerHTML = '<div class="text-center p-8 bg-white border border-stone-200 rounded-sm shadow-sm"><p class="text-stone-600 text-lg">Tidak ditemukan ayat yang relevan dengan kueri tersebut.</p></div>';
+                    return;
+                }
+
+                let html = '';
+                result.hasil.forEach(item => {
+                    const data = item.data;
+                    const persentase = Math.round(item.skor * 100);
+
+                    if (item.tipe === 'ayat') {
+                        html += `
+                            <a href="surat.html?nomor=${data.id_surat}" class="block bg-white p-6 md:p-8 rounded-sm shadow-sm border border-stone-200 transition-all hover:shadow-md hover:border-stone-300">
+                                <div class="flex items-center justify-between mb-6 border-b border-stone-100 pb-4">
+                                    <div class="flex items-center gap-3">
+                                        <span class="bg-stone-100 text-stone-800 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm border border-stone-200">AYAT</span>
+                                        <span class="font-bold text-stone-900">${data.nama_surat} (${data.id_surat}:${data.nomor_ayat})</span>
+                                    </div>
+                                    <div class="text-sm text-stone-500 font-medium">${persentase}% Relevan</div>
+                                </div>
+                                <h3 class="text-3xl font-arabic text-right leading-loose text-stone-900 mb-4" dir="rtl">${data.teks_arab || ''}</h3>
+                                <p class="text-stone-500 mb-2 italic">${data.teks_latin || ''}</p>
+                                <p class="text-stone-800 leading-relaxed">${data.terjemahan_id || ''}</p>
+                            </a>
+                        `;
+                    } else if (item.tipe === 'tafsir') {
+                        html += `
+                            <a href="surat.html?nomor=${data.id_surat}" class="block bg-white p-6 md:p-8 rounded-sm shadow-sm border border-stone-200 transition-all hover:shadow-md hover:border-stone-300">
+                                <div class="flex items-center justify-between mb-6 border-b border-stone-100 pb-4">
+                                    <div class="flex items-center gap-3">
+                                        <span class="bg-stone-800 text-white text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm shadow-sm">TAFSIR</span>
+                                        <span class="font-bold text-stone-900">${data.nama_surat} (${data.id_surat}:${data.nomor_ayat})</span>
+                                    </div>
+                                    <div class="text-sm text-stone-500 font-medium">${persentase}% Relevan</div>
+                                </div>
+                                <p class="text-stone-800 leading-relaxed text-justify line-clamp-4">${data.isi || ''}</p>
+                            </a>
+                        `;
+                    }
+                });
+
+                kontenHasil.innerHTML = html;
+            } catch (error) {
+                console.error(error);
+                kontenHasil.innerHTML = '<div class="text-center p-8 bg-white border border-red-200 rounded-sm shadow-sm"><p class="text-red-700">Terjadi kesalahan saat memproses pencarian.</p></div>';
+            } finally {
+                loading.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

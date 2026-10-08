@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Shalat - Alquran Digidaw</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+        .font-arabic { font-family: 'Amiri', serif; }
+        .font-serif { font-family: 'Lora', serif; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 font-serif min-h-screen flex flex-col">
+    <nav class="w-full bg-white border-b border-stone-200 sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 md:px-6 py-4 md:h-16 flex flex-col md:flex-row items-center justify-between gap-4">
+            <a href="index.html" class="font-bold text-lg text-stone-900 tracking-tight">Alquran Digidaw</a>
+            <div class="flex flex-wrap justify-center gap-4 md:gap-6 text-sm font-medium">
+                <a href="index.html" class="text-stone-500 hover:text-stone-900 transition-colors">Surah</a>
+                <a href="cari.html" class="text-stone-500 hover:text-stone-900 transition-colors">Pencarian AI</a>
+                <a href="shalat.html" class="text-stone-900 transition-colors">Jadwal Shalat</a>
+                <a href="doa.html" class="text-stone-500 hover:text-stone-900 transition-colors">Doa</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="w-full bg-white border-b border-stone-200 shadow-sm">
+        <div class="max-w-4xl mx-auto px-6 py-12 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-stone-900 mb-3">Jadwal Shalat</h1>
+            <p class="text-stone-500 uppercase tracking-widest text-sm">Waktu shalat seluruh wilayah Indonesia</p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 md:px-6 py-12 w-full flex-grow">
+        <div class="bg-white p-6 md:p-8 rounded-sm shadow-sm border border-stone-200 mb-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="select-provinsi" class="block text-sm font-bold text-stone-900 uppercase tracking-widest mb-2">Provinsi</label>
+                    <select id="select-provinsi" disabled class="w-full bg-stone-50 border border-stone-200 text-stone-900 rounded-sm px-4 py-3 focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 disabled:opacity-50 transition-all">
+                        <option value="">Memuat provinsi...</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="select-kabkota" class="block text-sm font-bold text-stone-900 uppercase tracking-widest mb-2">Kabupaten / Kota</label>
+                    <select id="select-kabkota" disabled class="w-full bg-stone-50 border border-stone-200 text-stone-900 rounded-sm px-4 py-3 focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 disabled:opacity-50 transition-all">
+                        <option value="">Pilih provinsi terlebih dahulu</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading-jadwal" class="hidden text-stone-500 text-center animate-pulse mb-8">
+            Menghitung jadwal shalat...
+        </div>
+
+        <div id="konten-jadwal" class="hidden">
+            <div class="overflow-x-auto bg-white rounded-sm shadow-sm border border-stone-200">
+                <table class="w-full text-left border-collapse text-xs md:text-sm">
+                    <thead>
+                        <tr class="bg-stone-50 border-b border-stone-200 text-sm uppercase tracking-widest text-stone-600">
+                            <th class="px-2 py-3 md:p-4 font-semibold text-center w-16">Tgl</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Imsak</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Subuh</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Terbit</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Dhuha</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Dzuhur</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Ashar</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Maghrib</th>
+                            <th class="px-2 py-3 md:p-4 font-semibold text-right">Isya</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-jadwal" class="divide-y divide-stone-100 text-stone-900 font-medium">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const selectProvinsi = document.getElementById('select-provinsi');
+        const selectKabkota = document.getElementById('select-kabkota');
+        const loadingJadwal = document.getElementById('loading-jadwal');
+        const kontenJadwal = document.getElementById('konten-jadwal');
+        const tbodyJadwal = document.getElementById('tbody-jadwal');
+
+        document.addEventListener('DOMContentLoaded', fetchProvinsi);
+
+        async function fetchProvinsi() {
+            try {
+                const response = await fetch('https://equran.id/api/v2/shalat/provinsi');
+                const result = await response.json();
+
+                let html = '<option value="">-- Pilih Provinsi --</option>';
+                if(result.data) {
+                    result.data.forEach(prov => {
+                        html += `<option value="${prov}">${prov}</option>`;
+                    });
+                }
+
+                selectProvinsi.innerHTML = html;
+                selectProvinsi.disabled = false;
+            } catch (error) {
+                console.error(error);
+                selectProvinsi.innerHTML = '<option value="">Gagal memuat provinsi</option>';
+            }
+        }
+
+        selectProvinsi.addEventListener('change', async (e) => {
+            const provinsi = e.target.value;
+            selectKabkota.innerHTML = '<option value="">-- Pilih Kabupaten/Kota --</option>';
+            kontenJadwal.classList.add('hidden');
+
+            if (!provinsi) {
+                selectKabkota.disabled = true;
+                return;
+            }
+
+            selectKabkota.disabled = true;
+            selectKabkota.innerHTML = '<option value="">Memuat...</option>';
+
+            try {
+                const response = await fetch('https://equran.id/api/v2/shalat/kabkota', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provinsi })
+                });
+                const result = await response.json();
+
+                let html = '<option value="">-- Pilih Kabupaten/Kota --</option>';
+                if(result.data) {
+                    result.data.forEach(kota => {
+                        html += `<option value="${kota}">${kota}</option>`;
+                    });
+                }
+
+                selectKabkota.innerHTML = html;
+                selectKabkota.disabled = false;
+            } catch (error) {
+                console.error(error);
+                selectKabkota.innerHTML = '<option value="">Gagal memuat kab/kota</option>';
+            }
+        });
+
+        selectKabkota.addEventListener('change', async (e) => {
+            const kabkota = e.target.value;
+            const provinsi = selectProvinsi.value;
+
+            if (!kabkota || !provinsi) {
+                kontenJadwal.classList.add('hidden');
+                return;
+            }
+
+            const now = new Date();
+            const bulan = now.getMonth() + 1;
+            const tahun = now.getFullYear();
+
+            loadingJadwal.classList.remove('hidden');
+            kontenJadwal.classList.add('hidden');
+
+            try {
+                const response = await fetch('https://equran.id/api/v2/shalat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provinsi, kabkota, bulan, tahun })
+                });
+                const result = await response.json();
+
+                if(result.data && result.data.jadwal) {
+                    renderJadwal(result.data.jadwal);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Gagal memuat jadwal shalat.");
+            } finally {
+                loadingJadwal.classList.add('hidden');
+            }
+        });
+
+        function renderJadwal(dataJadwal) {
+            let html = '';
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            dataJadwal.forEach(jadwal => {
+                const isToday = jadwal.tanggal_lengkap === todayStr;
+                const rowClass = isToday ? 'bg-stone-100 border-l-4 border-l-stone-900 font-bold' : 'hover:bg-stone-50 transition-colors';
+
+                const day = jadwal.tanggal_lengkap.split('-')[2];
+
+                html += `
+                    <tr class="${rowClass}">
+                        <td class="px-2 py-3 md:p-4 text-center border-r border-stone-100">${day}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight">${jadwal.imsak}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight">${jadwal.subuh}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight text-stone-400">${jadwal.terbit}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight text-stone-400">${jadwal.dhuha}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight">${jadwal.dzuhur}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight">${jadwal.ashar}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight">${jadwal.maghrib}</td>
+                        <td class="px-2 py-3 md:p-4 text-right tabular-nums tracking-tight">${jadwal.isya}</td>
+                    </tr>
+                `;
+            });
+
+            tbodyJadwal.innerHTML = html;
+            kontenJadwal.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Node
+node_modules/
+
+# Mac
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Agent
+.claude/

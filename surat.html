@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail Surah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+        .font-arabic { font-family: 'Amiri', serif; }
+        .font-serif { font-family: 'Lora', serif; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-900 font-serif min-h-screen flex flex-col pb-24">
+    <div id="floating-player" class="fixed bottom-0 left-0 w-full bg-white border-t border-stone-200 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] transform translate-y-full transition-transform duration-300 z-50 flex justify-center">
+        <div class="max-w-4xl w-full px-4 md:px-6 py-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 md:gap-4 truncate">
+                <button onclick="toggleCurrentAudio()" class="w-10 h-10 flex items-center justify-center bg-stone-900 hover:bg-stone-800 text-white rounded-sm shadow-sm transition-all shrink-0">
+                    <svg class="w-4 h-4 ml-0.5 play-icon hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4l12 6-12 6V4z"/></svg>
+                    <svg class="w-4 h-4 pause-icon" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h3v12H5V4zm7 0h3v12h-3V4z"/></svg>
+                </button>
+                <div class="flex flex-col truncate">
+                    <span id="floating-status" class="text-[10px] md:text-xs font-bold text-stone-500 uppercase tracking-widest">Memutar</span>
+                    <span id="floating-title" class="text-sm font-medium text-stone-900 truncate">...</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="scrollToCurrentAyat()" class="px-3 md:px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs md:text-sm font-medium rounded-sm transition-colors border border-stone-200" title="Loncat ke ayat yang sedang diputar">
+                    Lihat Ayat &uarr;
+                </button>
+                <a href="index.html" class="px-3 md:px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs md:text-sm font-medium rounded-sm transition-colors shadow-sm">
+                    &larr; Kembali
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <nav class="w-full bg-white border-b border-stone-200 sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 md:px-6 py-4 md:h-16 flex flex-col md:flex-row items-center justify-between gap-4">
+            <a href="index.html" class="font-bold text-lg text-stone-900 tracking-tight">Alquran Digidaw</a>
+            <div class="flex flex-wrap justify-center gap-4 md:gap-6 text-sm font-medium">
+                <a href="index.html" class="text-stone-900 transition-colors">Surah</a>
+                <a href="cari.html" class="text-stone-500 hover:text-stone-900 transition-colors">Pencarian AI</a>
+                <a href="shalat.html" class="text-stone-500 hover:text-stone-900 transition-colors">Jadwal Shalat</a>
+                <a href="doa.html" class="text-stone-500 hover:text-stone-900 transition-colors">Doa</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 md:px-6 py-8 w-full">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <a href="index.html" class="text-stone-500 hover:text-stone-900 text-sm tracking-wide transition-colors">&larr; Kembali ke Daftar Surah</a>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <select id="qari-select" onchange="changeQari(this.value)" class="bg-white border border-stone-200 text-stone-700 text-sm rounded-sm px-3 py-2 focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400">
+                    <option value="01">Abdullah Al-Juhany</option>
+                    <option value="02">Abdul Muhsin Al-Qasim</option>
+                    <option value="03">Abdurrahman As-Sudais</option>
+                    <option value="04">Ibrahim Al-Dossari</option>
+                    <option value="05" selected>Misyari Rasyid Al-Afasi</option>
+                    <option value="06">Yasser Al-Dosari</option>
+                </select>
+
+                <div class="flex bg-stone-200 p-1 rounded-sm">
+                    <button id="btn-terjemahan" onclick="toggleMode('terjemahan')" class="px-4 py-1.5 text-sm font-medium rounded-sm bg-white shadow-sm text-stone-900 transition-all">Terjemahan</button>
+                    <button id="btn-tafsir" onclick="toggleMode('tafsir')" class="px-4 py-1.5 text-sm font-medium rounded-sm text-stone-600 hover:text-stone-900 transition-all">Tafsir</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="header-surat" class="bg-white px-6 py-10 rounded-sm shadow-sm border border-stone-200 mb-8 text-center">
+            Loading data surah...
+        </div>
+
+        <div id="konten-ayat" class="space-y-8">
+        </div>
+    </div>
+
+    <script>
+        let currentAudio = null;
+        let globalSurahData = null;
+        let globalTafsirData = null;
+        let currentMode = 'terjemahan';
+        let currentQari = '05';
+
+        const qariNames = {
+            '01': 'Abdullah Al-Juhany',
+            '02': 'Abdul Muhsin Al-Qasim',
+            '03': 'Abdurrahman As-Sudais',
+            '04': 'Ibrahim Al-Dossari',
+            '05': 'Misyari Rasyid Al-Afasi',
+            '06': 'Yasser Al-Dosari'
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const nomor = params.get('nomor');
+            if(nomor) {
+                fetchDetailSurat(nomor);
+            } else {
+                document.getElementById('header-surat').innerHTML = '<p class="text-stone-500">Surah tidak ditemukan di URL.</p>';
+            }
+        });
+
+        async function fetchDetailSurat(nomor) {
+            try {
+                const response = await fetch(`https://equran.id/api/v2/surat/${nomor}`);
+                const result = await response.json();
+                globalSurahData = result.data;
+
+                document.getElementById('header-surat').innerHTML = `
+                    <h1 class="text-5xl font-arabic font-bold mb-4 text-stone-900 leading-tight">${globalSurahData.nama}</h1>
+                    <h2 class="text-2xl font-bold text-stone-800 tracking-tight">${globalSurahData.namaLatin}</h2>
+                    <p class="text-stone-500 mt-3 text-sm uppercase tracking-[0.1em]">${globalSurahData.arti} &middot; ${globalSurahData.jumlahAyat} Ayat &middot; ${globalSurahData.tempatTurun}</p>
+                    <div class="mt-6 p-5 bg-stone-50 rounded-sm text-sm text-stone-600 text-justify leading-relaxed border border-stone-100" style="max-height: 150px; overflow-y: auto;">
+                        ${globalSurahData.deskripsi}
+                    </div>
+                `;
+
+                renderAyat();
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('header-surat').innerHTML = '<p class="text-red-700">Terjadi kesalahan saat memuat detail surah.</p>';
+            }
+        }
+
+        async function fetchTafsir() {
+            if (globalTafsirData) return globalTafsirData;
+            try {
+                const response = await fetch(`https://equran.id/api/v2/tafsir/${globalSurahData.nomor}`);
+                const result = await response.json();
+                globalTafsirData = result.data.tafsir;
+                return globalTafsirData;
+            } catch (error) {
+                console.error(error);
+                return null;
+            }
+        }
+
+        async function toggleMode(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+
+            const btnTerj = document.getElementById('btn-terjemahan');
+            const btnTafs = document.getElementById('btn-tafsir');
+
+            if (mode === 'tafsir') {
+                btnTafs.classList.add('bg-white', 'shadow-sm', 'text-stone-900');
+                btnTafs.classList.remove('text-stone-600');
+                btnTerj.classList.remove('bg-white', 'shadow-sm', 'text-stone-900');
+                btnTerj.classList.add('text-stone-600');
+                await fetchTafsir();
+            } else {
+                btnTerj.classList.add('bg-white', 'shadow-sm', 'text-stone-900');
+                btnTerj.classList.remove('text-stone-600');
+                btnTafs.classList.remove('bg-white', 'shadow-sm', 'text-stone-900');
+                btnTafs.classList.add('text-stone-600');
+            }
+            renderAyat();
+        }
+
+        window.changeQari = function(qariKey) {
+            currentQari = qariKey;
+
+            document.querySelectorAll('audio').forEach(audio => {
+                const wrapper = audio.closest('.audio-wrapper');
+                const ayatNum = audio.getAttribute('data-ayat');
+                const ayatData = globalSurahData.ayat.find(a => a.nomorAyat == ayatNum);
+
+                if (ayatData && ayatData.audio[currentQari]) {
+                    const wasPlaying = !audio.paused;
+                    audio.src = ayatData.audio[currentQari];
+                    wrapper.querySelector('.qari-label').innerText = qariNames[currentQari];
+                    if (wasPlaying) {
+                        audio.play();
+                    }
+                }
+            });
+        };
+
+        function renderAyat() {
+            if (!globalSurahData) return;
+
+            let htmlAyat = '';
+            globalSurahData.ayat.forEach((ayat, index) => {
+                let teksBawah = ayat.teksIndonesia;
+                if (currentMode === 'tafsir' && globalTafsirData) {
+                    const t = globalTafsirData.find(x => x.ayat == ayat.nomorAyat);
+                    if (t) {
+                        teksBawah = t.teks;
+                    }
+                }
+
+                htmlAyat += `
+                    <div class="ayat-container bg-white p-6 md:p-8 rounded-sm shadow-sm border border-stone-200 transition-all hover:shadow-md">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+                            <div class="bg-stone-100 text-stone-800 rounded-sm h-12 w-12 flex items-center justify-center font-semibold text-lg border border-stone-200 shrink-0">
+                                ${ayat.nomorAyat}
+                            </div>
+                            <h3 class="teks-arab text-4xl font-arabic text-right leading-loose text-stone-700 w-full px-2 py-1 rounded-sm transition-all" dir="rtl">
+                                ${ayat.teksArab}
+                            </h3>
+                        </div>
+                        <div class="teks-latin text-stone-500 mb-3 italic text-lg leading-relaxed px-2 transition-all">
+                            ${ayat.teksLatin}
+                        </div>
+                        <div class="teks-indo text-stone-800 mb-8 leading-relaxed px-2 transition-all ${currentMode === 'tafsir' ? 'text-justify' : ''}">
+                            ${teksBawah}
+                        </div>
+
+                        <div class="pt-4 border-t border-stone-100 flex items-center bg-stone-50 p-4 rounded-sm border border-stone-200 audio-wrapper">
+                            <div class="flex items-center gap-5 w-full">
+                                <button onclick="toggleAudio('audio-${ayat.nomorAyat}')" class="w-12 h-12 flex items-center justify-center bg-stone-900 hover:bg-stone-800 text-white rounded-sm shadow-sm transition-all focus:outline-none shrink-0" aria-label="Play or pause audio">
+                                    <svg class="w-5 h-5 ml-1 play-icon" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                        <path d="M4 4l12 6-12 6V4z"/>
+                                    </svg>
+                                    <svg class="w-5 h-5 pause-icon hidden" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                        <path d="M5 4h3v12H5V4zm7 0h3v12h-3V4z"/>
+                                    </svg>
+                                </button>
+
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-semibold text-stone-900 tracking-tight">Dengarkan Murottal Ayat ${ayat.nomorAyat}</span>
+                                    <span class="qari-label text-xs text-stone-500 mt-0.5">${qariNames[currentQari]}</span>
+                                </div>
+                            </div>
+
+                            <audio id="audio-${ayat.nomorAyat}"
+                                   data-ayat="${ayat.nomorAyat}"
+                                   onplay="updateButtonUI('audio-${ayat.nomorAyat}', true)"
+                                   onpause="updateButtonUI('audio-${ayat.nomorAyat}', false)"
+                                   onended="handleAudioEnded('audio-${ayat.nomorAyat}')"
+                                   src="${ayat.audio[currentQari]}"
+                                   preload="none">
+                            </audio>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('konten-ayat').innerHTML = htmlAyat;
+        }
+
+        window.toggleAudio = function(audioId) {
+            const audio = document.getElementById(audioId);
+
+            if (audio.paused) {
+                if (currentAudio && currentAudio !== audio) {
+                    currentAudio.pause();
+                }
+                audio.play();
+                currentAudio = audio;
+            } else {
+                audio.pause();
+            }
+        };
+
+        window.toggleCurrentAudio = function() {
+            if (currentAudio) {
+                if (currentAudio.paused) {
+                    currentAudio.play();
+                } else {
+                    currentAudio.pause();
+                }
+            }
+        };
+
+        window.scrollToCurrentAyat = function() {
+            if (currentAudio) {
+                const wrapper = currentAudio.closest('.ayat-container');
+                if (wrapper) {
+                    wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        };
+
+        window.updateButtonUI = function(audioId, isPlaying) {
+            const audio = document.getElementById(audioId);
+            const wrapper = audio.closest('.audio-wrapper');
+            if (!wrapper) return;
+            const btn = wrapper.querySelector('button');
+            const playIcon = btn.querySelector('.play-icon');
+            const pauseIcon = btn.querySelector('.pause-icon');
+
+            if (isPlaying) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                btn.classList.replace('bg-stone-900', 'bg-stone-700');
+                btn.classList.remove('hover:bg-stone-800');
+            } else {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                btn.classList.replace('bg-stone-700', 'bg-stone-900');
+                btn.classList.add('hover:bg-stone-800');
+            }
+
+            const ayatContainer = audio.closest('.ayat-container');
+            if (ayatContainer) {
+                const teksArab = ayatContainer.querySelector('.teks-arab');
+                const teksLatin = ayatContainer.querySelector('.teks-latin');
+                const teksIndo = ayatContainer.querySelector('.teks-indo');
+
+                if (isPlaying) {
+                    teksArab.classList.replace('text-stone-700', 'text-stone-900');
+                    teksArab.classList.add('bg-stone-100');
+                    teksLatin.classList.replace('text-stone-500', 'text-stone-800');
+                    teksLatin.classList.add('bg-stone-50', 'rounded-sm');
+                    teksIndo.classList.replace('text-stone-800', 'text-stone-900');
+                    teksIndo.classList.add('bg-stone-50', 'rounded-sm', 'font-medium');
+                    ayatContainer.classList.remove('ring-2', 'ring-stone-900');
+                } else {
+                    teksArab.classList.replace('text-stone-900', 'text-stone-700');
+                    teksArab.classList.remove('bg-stone-100');
+                    teksLatin.classList.replace('text-stone-800', 'text-stone-500');
+                    teksLatin.classList.remove('bg-stone-50', 'rounded-sm');
+                    teksIndo.classList.replace('text-stone-900', 'text-stone-800');
+                    teksIndo.classList.remove('bg-stone-50', 'rounded-sm', 'font-medium');
+                }
+            }
+
+            const floatingPlayer = document.getElementById('floating-player');
+            if (floatingPlayer && globalSurahData) {
+                const floatingTitle = document.getElementById('floating-title');
+                const floatingPlayIcon = floatingPlayer.querySelector('.play-icon');
+                const floatingPauseIcon = floatingPlayer.querySelector('.pause-icon');
+                const floatingStatus = document.getElementById('floating-status');
+
+                floatingPlayer.classList.remove('translate-y-full');
+                const ayatNum = audio.getAttribute('data-ayat');
+                floatingTitle.textContent = globalSurahData.namaLatin + ' - Ayat ' + ayatNum;
+
+                if (isPlaying) {
+                    floatingPlayIcon.classList.add('hidden');
+                    floatingPauseIcon.classList.remove('hidden');
+                    floatingStatus.textContent = 'Memutar';
+                } else {
+                    floatingPlayIcon.classList.remove('hidden');
+                    floatingPauseIcon.classList.add('hidden');
+                    floatingStatus.textContent = 'Dijeda';
+                }
+            }
+        };
+
+        window.handleAudioEnded = function(audioId) {
+            updateButtonUI(audioId, false);
+
+            const audios = Array.from(document.querySelectorAll('audio'));
+            const currentIndex = audios.findIndex(a => a.id === audioId);
+
+            if (currentIndex !== -1 && currentIndex + 1 < audios.length) {
+                const nextAudio = audios[currentIndex + 1];
+
+                const wrapper = nextAudio.closest('.bg-white');
+                if (wrapper) {
+                    wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                if (currentAudio && currentAudio !== nextAudio) {
+                    currentAudio.pause();
+                }
+
+                nextAudio.play();
+                currentAudio = nextAudio;
+            }
+        };
+    </script>
+</body>
+</html>
